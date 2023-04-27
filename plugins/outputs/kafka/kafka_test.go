@@ -17,12 +17,8 @@ import (
 
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/metric"
-<<<<<<< HEAD
-	"github.com/influxdata/telegraf/plugins/serializers"
-=======
 	"github.com/influxdata/telegraf/plugins/common/netmonk"
-	"github.com/influxdata/telegraf/plugins/serializers/influx"
->>>>>>> 193a32a36... Implement netmonk authentication by runtime
+	"github.com/influxdata/telegraf/plugins/serializers"
 	"github.com/influxdata/telegraf/testutil"
 )
 
@@ -110,7 +106,7 @@ func TestConnectAndWriteIntegration(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/public/controller/server/server-12345/verify", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, err = w.Write([]byte(`{
 			"client_id" : "agent-12345",
 			"message_broker":{
 				"type": "kafka",
@@ -132,13 +128,12 @@ func TestConnectAndWriteIntegration(t *testing.T) {
 				"key":"key"
 			}
 		}`))
+		require.NoError(t, err)
 	}).Methods("POST")
 	httpTestServer := httptest.NewServer(r)
 	defer httpTestServer.Close()
 
-	s := &influx.Serializer{}
-	require.NoError(t, s.Init())
-
+	s := serializers.NewInfluxSerializer()
 	k := &Kafka{
 		Brokers:      brokers,
 		Topic:        "Test",

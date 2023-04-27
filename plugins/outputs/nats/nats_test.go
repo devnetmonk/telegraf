@@ -12,7 +12,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/influxdata/telegraf/plugins/common/netmonk"
-	"github.com/influxdata/telegraf/plugins/serializers/influx"
+	"github.com/influxdata/telegraf/plugins/serializers"
 	"github.com/influxdata/telegraf/testutil"
 )
 
@@ -25,7 +25,7 @@ func TestConnectAndWriteIntegration(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/public/controller/server/server-12345/verify", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, err := w.Write([]byte(`{
 			"client_id" : "agent-12345",
 			"message_broker":{
 				"type": "nats",
@@ -42,7 +42,8 @@ func TestConnectAndWriteIntegration(t *testing.T) {
 				"access":"access",
 				"key":"key"
 			}
-		}`))
+			}`))
+		require.NoError(t, err)
 	}).Methods("POST")
 	httpTestServer := httptest.NewServer(r)
 	defer httpTestServer.Close()
@@ -65,28 +66,18 @@ func TestConnectAndWriteIntegration(t *testing.T) {
 	require.NoError(t, err, "failed to start container")
 	defer container.Terminate()
 
-<<<<<<< HEAD
-	server := []string{fmt.Sprintf("nats://%s:%s", container.Address, container.Ports[servicePort])}
-	s := serializers.NewInfluxSerializer()
-=======
 	server := []string{fmt.Sprintf("nats://%s:%s", container.Address, container.Ports["4222"])}
-	serializer := &influx.Serializer{}
-	require.NoError(t, serializer.Init())
->>>>>>> 193a32a36... Implement netmonk authentication by runtime
+	s := serializers.NewInfluxSerializer()
 	n := &NATS{
 		Servers:    server,
 		Name:       "telegraf",
 		Subject:    "telegraf",
-<<<<<<< HEAD
 		serializer: s,
-=======
-		serializer: serializer,
 		Agent: netmonk.Agent{
 			NetmonkHost:      httpTestServer.URL,
 			NetmonkServerID:  "server-12345",
 			NetmonkServerKey: "12345",
 		},
->>>>>>> 193a32a36... Implement netmonk authentication by runtime
 	}
 
 	// Verify that we can connect to the NATS daemon
