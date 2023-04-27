@@ -106,7 +106,7 @@ func TestConnectAndWriteIntegration(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/public/controller/server/server-12345/verify", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, err = w.Write([]byte(`{
 			"client_id" : "agent-12345",
 			"message_broker":{
 				"type": "kafka",
@@ -128,6 +128,7 @@ func TestConnectAndWriteIntegration(t *testing.T) {
 				"key":"key"
 			}
 		}`))
+		require.NoError(t, err)
 	}).Methods("POST")
 	httpTestServer := httptest.NewServer(r)
 	defer httpTestServer.Close()

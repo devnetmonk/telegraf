@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+
+	"github.com/influxdata/telegraf"
 )
 
 const (
@@ -18,6 +19,8 @@ type Agent struct {
 	NetmonkHost      string `toml:"netmonk_host"`
 	NetmonkServerID  string `toml:"netmonk_server_id"`
 	NetmonkServerKey string `toml:"netmonk_server_key"`
+
+	Log telegraf.Logger `toml:"-"`
 }
 
 type CustomerCredentials struct {
@@ -77,7 +80,7 @@ func (n *Agent) Verify() (*CustomerCredentials, error) {
 		cc := CustomerCredentials{}
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatalln(err)
+			return nil, err
 		}
 		err = json.Unmarshal(body, &cc)
 		if err != nil {
