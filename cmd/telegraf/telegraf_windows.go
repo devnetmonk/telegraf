@@ -1,7 +1,5 @@
 //go:build windows
 
-//go:generate ../../scripts/windows-gen-syso.sh $GOARCH
-
 package main
 
 import (
@@ -23,12 +21,12 @@ func cliFlags() []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:  "service-name",
-			Value: "telegraf",
+			Value: "netmonk-telegraf",
 			Usage: "service name (windows only)",
 		},
 		&cli.StringFlag{
 			Name:  "service-display-name",
-			Value: "Telegraf Data Collector Service",
+			Value: "Netmonk Telegraf Data Collector Service",
 			Usage: "service display name (windows only)",
 		},
 		&cli.StringFlag{

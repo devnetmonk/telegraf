@@ -45,7 +45,7 @@ MAKEFLAGS += --no-print-directory
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 HOSTGO := env -u GOOS -u GOARCH -u GOARM -- go
-INTERNAL_PKG=github.com/influxdata/telegraf/internal
+INTERNAL_PKG=github.com/devnetmonk/telegraf/internal
 LDFLAGS := $(LDFLAGS) -X $(INTERNAL_PKG).Commit=$(commit) -X $(INTERNAL_PKG).Branch=$(branch)
 ifneq ($(tag),)
 	LDFLAGS += -X $(INTERNAL_PKG).Version=$(version)
@@ -114,8 +114,8 @@ build_tools:
 	$(HOSTGO) build -o ./tools/readme_config_includer/generator$(EXEEXT) ./tools/readme_config_includer/generator.go
 	$(HOSTGO) build -o ./tools/readme_linter/readme_linter$(EXEEXT) ./tools/readme_linter
 
-embed_readme_%:
-	go generate -run="readme_config_includer/generator$$" ./plugins/$*/...
+embed_readme_%:	
+	if [ $(GOOS) != "windows" ]; then go generate -run="readme_config_includer/generator$$" ./plugins/$*/...; fi
 
 .PHONY: config
 config:
@@ -127,7 +127,7 @@ docs: build_tools embed_readme_inputs embed_readme_outputs embed_readme_processo
 
 .PHONY: build
 build:
-	CGO_ENABLED=0 go build -tags "$(BUILDTAGS)" -ldflags "$(LDFLAGS)" ./cmd/telegraf
+	CGO_ENABLED=0 go build -o netmonk-telegraf$(EXEEXT) -tags "$(BUILDTAGS)" -ldflags "$(LDFLAGS)" ./cmd/telegraf
 
 .PHONY: telegraf
 telegraf: build
@@ -256,15 +256,18 @@ install: $(buildbin)
 	@mkdir -pv $(DESTDIR)$(sysconfdir)
 	@mkdir -pv $(DESTDIR)$(localstatedir)
 	@if [ $(GOOS) != "windows" ]; then mkdir -pv $(DESTDIR)$(sysconfdir)/logrotate.d; fi
-	@if [ $(GOOS) != "windows" ]; then mkdir -pv $(DESTDIR)$(localstatedir)/log/telegraf; fi
-	@if [ $(GOOS) != "windows" ]; then mkdir -pv $(DESTDIR)$(sysconfdir)/telegraf/telegraf.d; fi
+	@if [ $(GOOS) != "windows" ]; then mkdir -pv $(DESTDIR)$(localstatedir)/log/netmonk-telegraf; fi
+	@if [ $(GOOS) != "windows" ]; then mkdir -pv $(DESTDIR)$(sysconfdir)/netmonk-telegraf/telegraf.d; fi
+	@if [ $(GOOS) != "windows" ]; then mkdir -pv $(DESTDIR)$(sysconfdir)/netmonk-telegraf/scripts; fi
 	@cp -fv $(buildbin) $(DESTDIR)$(bindir)
-	@if [ $(GOOS) != "windows" ]; then cp -fv etc/telegraf.conf $(DESTDIR)$(sysconfdir)/telegraf/telegraf.conf$(conf_suffix); fi
-	@if [ $(GOOS) != "windows" ]; then cp -fv etc/logrotate.d/telegraf $(DESTDIR)$(sysconfdir)/logrotate.d; fi
-	@if [ $(GOOS) = "windows" ]; then cp -fv etc/telegraf.conf $(DESTDIR)/telegraf.conf; fi
-	@if [ $(GOOS) = "linux" ]; then mkdir -pv $(DESTDIR)$(prefix)/lib/telegraf/scripts; fi
-	@if [ $(GOOS) = "linux" ]; then cp -fv scripts/telegraf.service $(DESTDIR)$(prefix)/lib/telegraf/scripts; fi
-	@if [ $(GOOS) = "linux" ]; then cp -fv scripts/init.sh $(DESTDIR)$(prefix)/lib/telegraf/scripts; fi
+	@if [ $(GOOS) != "windows" ]; then cp -fv etc/telegraf.conf $(DESTDIR)$(sysconfdir)/netmonk-telegraf/netmonk-telegraf.conf$(conf_suffix); fi
+	@if [ $(GOOS) != "windows" ]; then cp -frv etc/netmonk/linux/scripts $(DESTDIR)$(sysconfdir)/netmonk-telegraf; fi
+	@if [ $(GOOS) != "windows" ]; then cp -fv etc/logrotate.d/netmonk-telegraf $(DESTDIR)$(sysconfdir)/logrotate.d; fi
+	@if [ $(GOOS) = "windows" ]; then cp -fv etc/telegraf.conf $(DESTDIR)/netmonk-telegraf.conf; fi
+	@if [ $(GOOS) = "windows" ]; then cp -frv etc/netmonk/windows/scripts $(DESTDIR); fi
+	@if [ $(GOOS) = "linux" ]; then mkdir -pv $(DESTDIR)$(prefix)/lib/netmonk-telegraf/scripts; fi
+	@if [ $(GOOS) = "linux" ]; then cp -fv scripts/netmonk-telegraf.service $(DESTDIR)$(prefix)/lib/netmonk-telegraf/scripts; fi
+	@if [ $(GOOS) = "linux" ]; then cp -fv scripts/init.sh $(DESTDIR)$(prefix)/lib/netmonk-telegraf/scripts; fi
 
 # Telegraf build per platform.  This improves package performance by sharing
 # the bin between deb/rpm/tar packages over building directly into the package
@@ -272,7 +275,7 @@ install: $(buildbin)
 $(buildbin):
 	echo $(GOOS)
 	@mkdir -pv $(dir $@)
-	CGO_ENABLED=0 go build -o $(dir $@) -ldflags "$(LDFLAGS)" ./cmd/telegraf
+	CGO_ENABLED=0 go build -o $(dir $@)netmonk-telegraf$(EXEEXT) -ldflags "$(LDFLAGS)" ./cmd/telegraf
 
 # Define packages Telegraf supports, organized by architecture with a rule to echo the list to limit include_packages
 # e.g. make package include_packages="$(make amd64)"
@@ -343,8 +346,8 @@ $(include_packages):
 	@mkdir -p $(pkgdir)
 
 	@if [ "$(suffix $@)" = ".rpm" ]; then \
-		echo "# DO NOT EDIT OR REMOVE" > $(DESTDIR)$(sysconfdir)/telegraf/telegraf.d/.ignore; \
-		echo "# This file prevents the rpm from changing permissions on this directory" >> $(DESTDIR)$(sysconfdir)/telegraf/telegraf.d/.ignore; \
+		echo "# DO NOT EDIT OR REMOVE" > $(DESTDIR)$(sysconfdir)/netmonk-telegraf/netmonk-telegraf.d/.ignore; \
+		echo "# This file prevents the rpm from changing permissions on this directory" >> $(DESTDIR)$(sysconfdir)/netmonk-telegraf/netmonk-telegraf.d/.ignore; \
 		fpm --force \
 			--log info \
 			--architecture $(basename $@) \
@@ -354,9 +357,9 @@ $(include_packages):
 			--url https://github.com/influxdata/telegraf \
 			--license MIT \
 			--maintainer support@influxdb.com \
-			--config-files /etc/telegraf/telegraf.conf \
-			--config-files /etc/telegraf/telegraf.d/.ignore \
-			--config-files /etc/logrotate.d/telegraf \
+			--config-files /etc/netmonk-telegraf/netmonk-telegraf.conf \
+			--config-files /etc/netmonk-telegraf/netmonk-telegraf.d/.ignore \
+			--config-files /etc/logrotate.d/netmonk-telegraf \
 			--after-install scripts/rpm/post-install.sh \
 			--before-install scripts/rpm/pre-install.sh \
 			--after-remove scripts/rpm/post-remove.sh \
@@ -366,11 +369,11 @@ $(include_packages):
 			--rpm-digest sha256 \
 			--rpm-posttrans scripts/rpm/post-install.sh \
 			--rpm-os ${GOOS} \
-			--name telegraf \
+			--name netmonk-telegraf \
 			--version $(version) \
 			--iteration $(rpm_iteration) \
 			--chdir $(DESTDIR) \
-			--package $(pkgdir)/telegraf-$(rpm_version).$@ ;\
+			--package $(pkgdir)/netmonk-telegraf-$(rpm_version).$@ ;\
 	elif [ "$(suffix $@)" = ".deb" ]; then \
 		fpm --force \
 			--log info \
@@ -381,22 +384,22 @@ $(include_packages):
 			--url https://github.com/influxdata/telegraf \
 			--license MIT \
 			--maintainer support@influxdb.com \
-			--config-files /etc/telegraf/telegraf.conf.sample \
-			--config-files /etc/logrotate.d/telegraf \
+			--config-files /etc/netmonk-telegraf/netmonk-telegraf.conf.sample \
+			--config-files /etc/logrotate.d/netmonk-telegraf \
 			--after-install scripts/deb/post-install.sh \
 			--before-install scripts/deb/pre-install.sh \
 			--after-remove scripts/deb/post-remove.sh \
 			--before-remove scripts/deb/pre-remove.sh \
 			--description "Plugin-driven server agent for reporting metrics into InfluxDB." \
-			--name telegraf \
+			--name netmonk-telegraf \
 			--version $(version) \
 			--iteration $(deb_iteration) \
 			--chdir $(DESTDIR) \
-			--package $(pkgdir)/telegraf_$(deb_version)_$@	;\
+			--package $(pkgdir)/netmonk-telegraf_$(deb_version)_$@	;\
 	elif [ "$(suffix $@)" = ".zip" ]; then \
-		(cd $(dir $(DESTDIR)) && zip -r - ./*) > $(pkgdir)/telegraf-$(tar_version)_$@ ;\
+		zip -r $(pkgdir)/netmonk-telegraf-$(tar_version)_$@ $(DESTDIR)/* ;\
 	elif [ "$(suffix $@)" = ".gz" ]; then \
-		tar --owner 0 --group 0 -czvf $(pkgdir)/telegraf-$(tar_version)_$@ -C $(dir $(DESTDIR)) . ;\
+		tar --owner 0 --group 0 -czvf $(pkgdir)/netmonk-telegraf-$(tar_version)_$@ -C $(dir $(DESTDIR)) . ;\
 	fi
 
 amd64.deb x86_64.rpm linux_amd64.tar.gz: export GOOS := linux
@@ -479,6 +482,6 @@ windows_i386.zip windows_amd64.zip windows_arm64.zip: export EXEEXT := .exe
 %.zip: export pkg := zip
 %.zip: export prefix := /
 
-%.deb %.rpm %.tar.gz %.zip: export DESTDIR = build/$(GOOS)-$(GOARCH)$(GOARM)-$(pkg)/telegraf-$(version)
-%.deb %.rpm %.tar.gz %.zip: export buildbin = build/$(GOOS)-$(GOARCH)$(GOARM)/telegraf$(EXEEXT)
+%.deb %.rpm %.tar.gz %.zip: export DESTDIR = build/$(GOOS)-$(GOARCH)$(GOARM)-$(pkg)/netmonk-telegraf-$(version)
+%.deb %.rpm %.tar.gz %.zip: export buildbin = build/$(GOOS)-$(GOARCH)$(GOARM)/netmonk-telegraf$(EXEEXT)
 %.deb %.rpm %.tar.gz %.zip: export LDFLAGS = -w -s
