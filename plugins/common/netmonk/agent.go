@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	verifyEndpoint = "/public/controller/server/%s/verify"
+	verifyEndpoint = "/api/public/controller/server/%s/verify"
 )
 
 // Agent common to authenticate netmonk agent.
