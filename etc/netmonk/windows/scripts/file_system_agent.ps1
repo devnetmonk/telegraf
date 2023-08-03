@@ -6,12 +6,12 @@ if ($logicalDisks.Count -gt 1) {
 	if ($disk.VolumeName -ne "") {
 	    $volumeName = $disk.VolumeName
 	}
-        Write-Host "server_information,type=filesystem key=$volumeName,size=$($disk.Size),mounted_on=$($disk.DeviceID)"
+        Write-Host "server_information,type=filesystem key=""$volumeName"",size=$($disk.Size),mounted_on=""$($disk.DeviceID)"""
     }
 } else {
     $disk = $logicalDisks[0]
     if ($disk.VolumeName -ne "") {
          $volumeName = $disk.VolumeName
     }
-    Write-Host "server_information,type=filesystem key=$volumeName,size=$($disk.Size),mounted_on=$($disk.DeviceID)"
+    Write-Host "server_information,type=filesystem key=""$volumeName"",size=$($disk.Size),mounted_on=""$($disk.DeviceID)"""
 }
